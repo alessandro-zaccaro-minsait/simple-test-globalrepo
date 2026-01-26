@@ -1,0 +1,23 @@
+# Node
+node_modules/
+coverage/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# Java/Maven
+.target/
+target/
+
+# Go
+bin/
+
+# macOS
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/

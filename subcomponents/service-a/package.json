@@ -1,0 +1,10 @@
+{
+  "name": "service-a",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "node ./src/index.js > build/output.txt",
+    "test": "node ./test/index.test.js"
+  },
+  "devDependencies": {}
+}
