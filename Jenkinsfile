@@ -5,17 +5,12 @@
 
 pipeline {
   agent any
-  options {
-    ansiColor('xterm')
-    timestamps()
-    disableConcurrentBuilds()
+  parameters {
+    choice(name: 'COMPONENT', choices: ['service-b', 'none'], description: 'Scegli cosa buildare')
+    // Puoi estendere a: ['service-a','service-b','service-c','service-d','all','none']
   }
-  triggers {
-    // Abilita webhook GitHub per push/PR sul job (consigliato)
-  }
-  environment {
-    // Variabili comuni se servono
-  }
+  options { ansiColor('xterm'); timestamps(); disableConcurrentBuilds() }
+
   stages {
     stage('Checkout') {
       steps {
@@ -24,84 +19,35 @@ pipeline {
       }
     }
 
-    stage('Build subcomponents (parallel)') {
-      parallel {
-        stage('service-a (Node)') {
-          when {
-            beforeAgent true
-            anyOf {
-              changeset pattern: 'subcomponents/service-a/**', comparator: 'ANT'
-              changeset pattern: 'Jenkinsfile', comparator: 'ANT'
-            }
-          }
-          steps {
-            dir('subcomponents/service-a') {
-              sh 'chmod +x build.sh && ./build.sh'
-            }
-          }
-          // Esempio alternativa con Docker (decommenta e rimuovi agent any in alto se vuoi usare solo Docker)
-          // agent { docker { image 'node:18-alpine' } }
-        }
-
-        stage('service-b (Maven)') {
-          when {
-            beforeAgent true
-            anyOf {
-              changeset pattern: 'subcomponents/service-b/**', comparator: 'ANT'
-              changeset pattern: 'Jenkinsfile', comparator: 'ANT'
-            }
-          }
-          steps {
-            dir('subcomponents/service-b') {
-              sh 'chmod +x build.sh && ./build.sh'
-            }
-          }
-          post {
-            always {
-              junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
-            }
-          }
-          // agent { docker { image 'maven:3.9-eclipse-temurin-17' } }
-        }
-
-        stage('service-c (Python)') {
-          when {
-            beforeAgent true
-            anyOf {
-              changeset pattern: 'subcomponents/service-c/**', comparator: 'ANT'
-              changeset pattern: 'Jenkinsfile', comparator: 'ANT'
-            }
-          }
-          steps {
-            dir('subcomponents/service-c') {
-              sh 'chmod +x build.sh && ./build.sh'
-            }
-          }
-          // agent { docker { image 'python:3.11-alpine' } }
-        }
-
-        stage('service-d (Go)') {
-          when {
-            beforeAgent true
-            anyOf {
-              changeset pattern: 'subcomponents/service-d/**', comparator: 'ANT'
-              changeset pattern: 'Jenkinsfile', comparator: 'ANT'
-            }
-          }
-          steps {
-            dir('subcomponents/service-d') {
-              sh 'chmod +x build.sh && ./build.sh'
-            }
-          }
-          // agent { docker { image 'golang:1.22-alpine' } }
+    stage('Build Java (service-b)') {
+      when {
+        anyOf {
+          // Parte se selezioni esplicitamente service-b
+          expression { params.COMPONENT == 'service-b' }
+          // Oppure se ci sono cambi in service-b
+          changeset pattern: 'subcomponents/service-b/**', comparator: 'ANT'
+          changeset pattern: 'Jenkinsfile', comparator: 'ANT'
         }
       }
+      steps {
+        dir('subcomponents/service-b') {
+          sh 'chmod +x build.sh && ./build.sh'
+        }
+      }
+      post {
+        always {
+          junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
+        }
+      }
+      // agent { docker { image 'maven:3.9-eclipse-temurin-17' } }
     }
+
+    // Facoltativo: altri stage restano ma protetti da when simili o rimossi
   }
+
   post {
-    success { echo '✅ Build completata con successo.' }
-    unstable { echo '⚠️ Build instabile. Controlla i report.' }
-    failure { echo '❌ Build fallita.' }
-    always { archiveArtifacts allowEmptyArchive: true, artifacts: 'subcomponents/**/build/**/*', fingerprint: true }
+    always {
+      archiveArtifacts allowEmptyArchive: true, artifacts: 'subcomponents/service-b/build/**/*', fingerprint: true
+    }
   }
 }
